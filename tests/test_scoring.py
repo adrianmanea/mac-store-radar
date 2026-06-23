@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from radar.adapters.models import AppMetadata
 from radar.scoring import subscores
 from radar.scoring.engine import NicheInputs, score_niche
 from radar.scoring.weights import load_weights
 
 W = load_weights()
+NOW = datetime(2026, 6, 23, tzinfo=timezone.utc)
 
 
-def app(app_id=1, ratings=1000, avg=4.0, price=0.0, sub=False, cclass=None):
+def app(app_id=1, ratings=1000, avg=4.0, price=0.0, sub=False, cclass=None, ver_date=None):
     return AppMetadata(
         app_id=app_id,
         name=f"App{app_id}",
@@ -19,7 +22,40 @@ def app(app_id=1, ratings=1000, avg=4.0, price=0.0, sub=False, cclass=None):
         price=price,
         is_subscription=sub,
         complexity_class=cclass,
+        current_ver_date=ver_date,
     )
+
+
+# --- freshness ------------------------------------------------------------
+
+
+def test_freshness_decays_with_age():
+    fw = W["freshness"]
+    fresh = subscores.app_freshness(NOW, NOW, weights=fw)
+    one_year = subscores.app_freshness(NOW - timedelta(days=365), NOW, weights=fw)
+    two_year = subscores.app_freshness(NOW - timedelta(days=730), NOW, weights=fw)
+    assert fresh == 1.0
+    assert abs(one_year - 0.5) < 0.01  # half_life_days default 365
+    assert two_year < one_year < fresh
+
+
+def test_freshness_floored_and_unknown_default():
+    fw = W["freshness"]
+    ancient = subscores.app_freshness(NOW - timedelta(days=3650), NOW, weights=fw)
+    assert ancient == fw["floor"]  # 10 years -> floored
+    assert subscores.app_freshness(None, NOW, weights=fw) == fw["unknown_multiplier"]
+
+
+def test_stale_niche_scores_lower_demand_than_fresh():
+    fresh_apps = [app(ratings=100_000, ver_date=NOW)]
+    stale_apps = [app(ratings=100_000, ver_date=NOW - timedelta(days=2000))]
+    d_fresh = subscores.demand_score(
+        fresh_apps, weights=W["demand"], freshness=W["freshness"], now=NOW
+    )
+    d_stale = subscores.demand_score(
+        stale_apps, weights=W["demand"], freshness=W["freshness"], now=NOW
+    )
+    assert d_fresh > d_stale  # same lifetime ratings, dead app counts for less
 
 
 # --- sub-scores -----------------------------------------------------------

@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+from radar.adapters._parse import parse_dt
 from radar.adapters.client import ITunesClient
 from radar.adapters.errors import AdapterError
 from radar.adapters.models import AppMetadata
@@ -75,7 +76,7 @@ def _build_metadata(db, app_ids: list[int]) -> list[AppMetadata]:
         return []
     apps = (
         db.table("apps")
-        .select("app_id,name,price,is_subscription,complexity_class")
+        .select("app_id,name,price,is_subscription,complexity_class,current_ver_date")
         .in_("app_id", app_ids)
         .execute()
     ).data or []
@@ -90,6 +91,7 @@ def _build_metadata(db, app_ids: list[int]) -> list[AppMetadata]:
                 price=snap.get("price", a.get("price")),
                 is_subscription=a.get("is_subscription"),
                 complexity_class=a.get("complexity_class"),
+                current_ver_date=parse_dt(a.get("current_ver_date")),
                 rating_count=snap.get("rating_count"),
                 avg_rating=snap.get("avg_rating"),
             )

@@ -156,6 +156,12 @@ Goal: legible, read-only view + instant live probe.
 
 ---
 
+## Liveness / "still in demand" (added — rating_count is lifetime, not current demand)
+
+- [x] **Freshness discount** — each app's ratings weighted by `0.5^(days_since_update / half_life_days)` (config in `weights.json` `freshness`, default 365d half-life, 0.1 floor). Applied to demand + gap so abandonware stops counting as live demand. `avg_freshness` in `niche_scores.raw_inputs`. Tolerant ISO parser shared. Data showed 28% of apps >18mo stale, 19% >3yr.
+- [ ] **Per-app velocity weighting** — the stronger liveness signal: weight ratings by recent Δratings/day once the cron has ≥2 days of snapshots (extends M4 to per-app, feeds demand). ⏳ needs day-over-day data.
+- [ ] **Staleness display** — surface last-update age / freshness in the frontend drill-down (M7.5).
+
 ## Open questions to resolve in-flight (PRD §10 / TECH §12)
 - Lookup batch ceiling: 150 vs 200 (resolve in 1.4).
 - Review pages-deep before diminishing returns (resolve in 1.5 / 5.2).

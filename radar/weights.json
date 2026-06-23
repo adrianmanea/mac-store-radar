@@ -16,6 +16,13 @@
     "_note": "google_volume optional in v0.1; renormalize remaining weights when absent."
   },
 
+  "freshness": {
+    "half_life_days": 365,
+    "floor": 0.1,
+    "unknown_multiplier": 0.5,
+    "_note": "Liveness discount: rating_count is lifetime (a stock), not current demand (a flow). Each app's ratings are weighted by 0.5^(days_since_last_update / half_life_days), floored. Updated today=1.0, 1yr=0.5, 2yr=0.25. Applied to demand + gap so abandonware stops counting as live demand. Set half_life_days very large to disable. Per-app rating velocity (M4) is the stronger liveness signal once daily snapshots accumulate."
+  },
+
   "competition": {
     "rating_floor": 50,
     "count_weight": 0.4,

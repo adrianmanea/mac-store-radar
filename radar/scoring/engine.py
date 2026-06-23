@@ -8,6 +8,7 @@ exact logic from the shared weights.json. Gates run BEFORE the blend (PRD §4).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from radar.adapters.models import AppMetadata
 from radar.scoring import subscores
@@ -61,24 +62,37 @@ def score_niche(inputs: NicheInputs, weights: dict | None = None) -> Score:
     """Compute sub-scores, apply gates, then blend Opportunity."""
     w = weights or load_weights()
 
+    freshness = w.get("freshness")
     demand = subscores.demand_score(
         inputs.apps,
         autocomplete_depth=inputs.autocomplete_depth,
         google_volume=inputs.google_volume,
         weights=w["demand"],
+        freshness=freshness,
     )
     competition = subscores.competition_score(inputs.apps, weights=w["competition"])
     gap = subscores.gap_score(
-        inputs.apps, complaint_density=inputs.complaint_density, weights=w["gap"]
+        inputs.apps,
+        complaint_density=inputs.complaint_density,
+        weights=w["gap"],
+        freshness=freshness,
     )
     monetization = subscores.monetization_score(
         inputs.apps, grossing_app_ids=inputs.grossing_app_ids, weights=w["monetization"]
     )
     buildability = subscores.buildability_multiplier(inputs.apps, weights=w["buildability"])
 
+    avg_freshness = None
+    if freshness and inputs.apps:
+        now = datetime.now(timezone.utc)
+        avg_freshness = sum(
+            subscores.app_freshness(a.current_ver_date, now, weights=freshness) for a in inputs.apps
+        ) / len(inputs.apps)
+
     raw = {
         "n_apps": len(inputs.apps),
         "total_ratings": sum(a.rating_count or 0 for a in inputs.apps),
+        "avg_freshness": avg_freshness,
         "autocomplete_depth": inputs.autocomplete_depth,
         "google_volume": inputs.google_volume,
         "complaint_density": inputs.complaint_density,

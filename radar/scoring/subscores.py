@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from datetime import datetime, timezone
 
 from radar.adapters.models import AppMetadata
 
@@ -36,15 +37,44 @@ def _renormalize(weights: dict[str, float]) -> dict[str, float]:
     return {k: v / total for k, v in weights.items()}
 
 
+def app_freshness(ver_date: datetime | None, now: datetime, *, weights: dict) -> float:
+    """Liveness multiplier (0..1) from days since last update — exponential decay.
+
+    Updated today -> 1.0; one half_life ago -> 0.5; floored. Unknown date -> a
+    configurable neutral-ish default (we don't punish as hard as confirmed-stale).
+    """
+    if ver_date is None:
+        return float(weights.get("unknown_multiplier", 0.5))
+    age_days = (now - ver_date).total_seconds() / 86400.0
+    if age_days <= 0:
+        return 1.0
+    val = 0.5 ** (age_days / weights["half_life_days"])
+    return max(float(weights["floor"]), min(1.0, val))
+
+
 def demand_score(
     apps: list[AppMetadata],
     *,
     autocomplete_depth: int = 0,
     google_volume: int | None = None,
     weights: dict,
+    freshness: dict | None = None,
+    now: datetime | None = None,
 ) -> float:
-    """log(total ratings) + autocomplete depth + (optional) google volume."""
-    total_ratings = sum(a.rating_count or 0 for a in apps)
+    """log(freshness-weighted ratings) + autocomplete depth + (optional) google volume.
+
+    Ratings are weighted by each app's liveness (current_ver_date) so a niche of dead
+    apps with big lifetime counts doesn't read as current demand. When `freshness` is
+    None, falls back to raw lifetime ratings (back-compat).
+    """
+    now = now or datetime.now(timezone.utc)
+    if freshness is None:
+        total_ratings = sum(a.rating_count or 0 for a in apps)
+    else:
+        total_ratings = sum(
+            (a.rating_count or 0) * app_freshness(a.current_ver_date, now, weights=freshness)
+            for a in apps
+        )
     ratings_c = _clamp100(math.log10(1 + total_ratings) / REF_LOG_RATINGS * 100)
     auto_c = _clamp100(autocomplete_depth / REF_AUTOCOMPLETE_DEPTH * 100)
 
@@ -88,16 +118,29 @@ def competition_score(apps: list[AppMetadata], *, weights: dict) -> float:
     )
 
 
-def gap_score(apps: list[AppMetadata], *, complaint_density: float = 0.0, weights: dict) -> float:
+def gap_score(
+    apps: list[AppMetadata],
+    *,
+    complaint_density: float = 0.0,
+    weights: dict,
+    freshness: dict | None = None,
+    now: datetime | None = None,
+) -> float:
     """high_volume × low_avg_rating (the money signal) + complaint density (LLM, M6).
 
     Per PRD the thesis is "a high-traffic app with lots of 2-star reviews", so we take
-    the single most-unhappy-mass incumbent, not the niche average.
+    the single most-unhappy-mass incumbent, not the niche average. Unhappy mass is
+    freshness-weighted: a long-dead app's bad reviews aren't a current opportunity.
     """
-    unhappy_mass = max(
-        ((a.rating_count or 0) * (5.0 - (a.avg_rating or 5.0)) / 5.0 for a in apps),
-        default=0.0,
-    )
+    now = now or datetime.now(timezone.utc)
+
+    def unhappy(a: AppMetadata) -> float:
+        mass = (a.rating_count or 0) * (5.0 - (a.avg_rating or 5.0)) / 5.0
+        if freshness is not None:
+            mass *= app_freshness(a.current_ver_date, now, weights=freshness)
+        return mass
+
+    unhappy_mass = max((unhappy(a) for a in apps), default=0.0)
     volume_c = _clamp100(math.log10(1 + unhappy_mass) / REF_LOG_GAP * 100)
     complaint_c = _clamp100(complaint_density * 100)  # density given as 0..1
     return _clamp100(
