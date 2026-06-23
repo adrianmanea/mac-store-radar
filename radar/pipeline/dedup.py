@@ -16,6 +16,7 @@ import logging
 
 from radar.adapters import search
 from radar.adapters.client import ITunesClient
+from radar.adapters.errors import AdapterError
 from radar.db import writers
 
 log = logging.getLogger("radar.pipeline")
@@ -76,7 +77,11 @@ def run_dedup(db, itunes: ITunesClient, *, threshold: float = 0.6) -> dict:
     backfilled = 0
     for r in rows:
         if not r.get("app_ids"):
-            ids = [s.app_id for s in search.search(itunes, r["keyword"], limit=50)][:30]
+            try:
+                ids = [s.app_id for s in search.search(itunes, r["keyword"], limit=50)][:30]
+            except AdapterError as exc:  # rate limit / transient — skip, retry next run
+                log.warning("dedup backfill skipped %s: %s", r["keyword"], exc)
+                continue
             r["app_ids"] = ids
             writers.update_candidate(db, r["keyword"], app_ids=ids)
             backfilled += 1
