@@ -81,6 +81,25 @@ def _itunes():
     )
 
 
+def test_run_scrape_marks_partial_on_rate_limit():
+    from radar.adapters.limiter import TokenBucket
+
+    # Every request 403s -> client raises RateLimitError after retries.
+    itunes = ITunesClient(
+        limiter=TokenBucket(per_minute=10_000_000, capacity=1000),
+        transport=httpx.MockTransport(lambda req: httpx.Response(403)),
+        sleep=lambda _s: None,
+        max_retries=1,
+    )
+    db = FakeDB(niches=[{"id": 1, "keyword": "obsidian", "storefront": "us"}])
+    summary = run_scrape(db, itunes, limit_per_niche=10)
+
+    assert summary["status"] == "partial"
+    assert "rate-limited" in summary["notes"]
+    # the run is still closed out (finish_run update), not left dangling
+    assert ("scrape_runs", "update") in [(t, op) for (t, op, _x) in db.writes]
+
+
 def test_run_scrape_writes_apps_snapshots_niche_apps_and_run():
     db = FakeDB(niches=[{"id": 1, "keyword": "obsidian", "storefront": "us"}])
     summary = run_scrape(db, _itunes(), limit_per_niche=10)

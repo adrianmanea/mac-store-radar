@@ -103,7 +103,7 @@ Goal: zero-babysit daily run. Wire M1–M4 into one ordered pipeline.
 - [ ] **5.2** Bounded review fetch priority (§4.4): new apps now / watched >7d / slow rotation, capped ~150 apps/run. (M)
   - Note: reviews RSS empty for Mac (M1 finding) — gap signal stays stubbed regardless, so this is low priority until/unless review data appears.
 - [x] **5.3** `.github/workflows/daily-scrape.yml` — `cron: '0 6 * * *'` + `workflow_dispatch` (seed/limit inputs), concurrency guard, `timeout-minutes: 90`, secrets wired. `radar.run` now scrapes **and** scores in one pass. (S)
-- [◐] **5.4** Fail-loud: any exception → non-zero exit → job fails → GitHub notifies. Explicit `status='partial'` self-heal (resume rotation) still TODO. (S)
+- [x] **5.4** Rate-limit mid-run → `status='partial'` + note, run closed cleanly, job doesn't crash (next day's rotation self-heals). Other exceptions still propagate (fail-loud). Tested. (S)
 
 **AC:** ✅ locally `radar` runs scrape+score unattended (run 2 ok, 126 snapshots across 2 capture times). ⏳ scheduled run needs activation: push to origin + add repo secrets.
 
