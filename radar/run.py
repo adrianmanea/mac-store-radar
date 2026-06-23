@@ -108,6 +108,25 @@ def run_discovery_job() -> int:
     return 0
 
 
+def run_dedup_job() -> int:
+    """Collapse candidate niches that resolve to the same competitive set (M9.5)."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.pipeline.dedup import run_dedup
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    itunes = _itunes_client(cfg)
+    try:
+        res = run_dedup(db, itunes)
+    finally:
+        itunes.close()
+    print(
+        f"dedup: {res['clusters']} clusters, marked {res['duplicates']} duplicates "
+        f"(backfilled {res['backfilled']} app-sets)"
+    )
+    return 0
+
+
 def run_watch(keywords: list[str]) -> int:
     """Promote hand-picked candidates into the watch list (the daily-tracked niches)."""
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")

@@ -5,7 +5,14 @@ from __future__ import annotations
 import sys
 
 from radar import __version__
-from radar.run import run_discovery_job, run_export, run_pipeline, run_tagging, run_watch
+from radar.run import (
+    run_dedup_job,
+    run_discovery_job,
+    run_export,
+    run_pipeline,
+    run_tagging,
+    run_watch,
+)
 
 
 def build_parser():
@@ -52,12 +59,19 @@ def build_parser():
         metavar="KEYWORD",
         help="Add discovered candidate keyword(s) to the watch list (daily-tracked).",
     )
+    parser.add_argument(
+        "--dedup",
+        action="store_true",
+        help="Collapse candidate niches that resolve to the same competitive set.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.dedup:
+        return run_dedup_job()
     if args.watch:
         return run_watch(args.watch)
     if args.export:

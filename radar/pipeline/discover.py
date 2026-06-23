@@ -95,6 +95,7 @@ def run_discovery(
             n_apps=len(metas),
             last_checked=now,
             reason=reason,
+            app_ids=ids[:30],  # competitive set, for app-set dedup (M9.5)
         )
 
     summary = {
