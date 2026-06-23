@@ -123,19 +123,19 @@ Goal: review→backlog + buildability. Never blocks scrape.
 
 ---
 
-## M7 — Frontend dashboard (build-seq #5, TECH-PRD §7)
+## M7 — Frontend dashboard (build-seq #5, TECH-PRD §7) — SCAFFOLD DONE
 
 Goal: legible, read-only view + instant live probe.
 
-- [ ] **7.1** Vite + React + TS + Tailwind scaffold, Cloudflare Pages deploy. (S)
-- [ ] **7.2** Supabase JS read client (anon key, RLS). (S)
-- [ ] **7.3** Niche table — sortable by Opportunity / Momentum. (M)
+- [x] **7.1** Vite + React + TS + Tailwind v4 scaffold in `frontend/`. `pnpm build` clean (tsc + vite). Cloudflare Pages deploy still TODO. (S)
+- [x] **7.2** Supabase JS read client (`lib/supabase.ts`, anon key from `VITE_*` env, RLS). Anon read + niches join verified live. (S)
+- [x] **7.3** Niche table — sortable by every sub-score incl. Opportunity / Momentum; gated niches badged with reason tooltip. (M)
 - [ ] **7.4** Opportunity × Momentum scatter (the quadrant map). (M)
 - [ ] **7.5** Niche drill-down — incumbent list, per-app rating-history sparkline, version cadence, clustered unmet needs. (L)
-- [ ] **7.6** **Live probe** — keyword in → JSONP iTunes call → score via **TS-mirrored scoring spec** (shares `weights.json`), no DB hop. (L)
-- [ ] **7.7** Real empty / skeleton-loading / error states; demand axis explicitly labeled "estimate" (no false precision). (M)
+- [ ] **7.6** **Live probe** — keyword in → JSONP iTunes call → score via TS-mirrored scoring spec (shares `weights.json`), no DB hop. (L)
+- [x] **7.7** Real empty / skeleton-loading / error states; demand labeled `est.` (no false precision). (M)
 
-**AC:** dashboard renders real DB data; scatter + drill-down work; live probe scores an unseen keyword client-side and matches Python score on the same inputs.
+**AC:** ✅ dashboard renders real DB data (3 live niches via anon key). Scatter (7.4), drill-down (7.5), live probe (7.6) still to build.
 
 ---
 
