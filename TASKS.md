@@ -175,7 +175,7 @@ Goal: stop hand-seeding. Self-feeding generate → validate → auto-promote fun
 - [ ] **9.7** Use Google suggestion order/presence as the demand proxy (fills the dead Apple-autocomplete signal). (S)
 - [ ] **9.8** Catalog-harvest generator (n-grams from scraped titles/categories) as a third no-key source. (M)
 
-Decisions: **LLM generator** + **auto-promote** (your call). Generators dropped: autocomplete (Apple endpoint dead — 0 hints). 8 tests (parse + funnel). **⏳ needs `ANTHROPIC_API_KEY` to run.**
+Decisions: ~~auto-promote~~ **REVISED** → discovery fills a scored candidate POOL only; operator hand-picks what to track. `radar --watch <kw>` promotes a candidate into the watch list. Validation drains the backlog (oldest `new` first) so the pool deepens daily. Generators dropped: autocomplete (Apple dead). Live: 195 candidates from 20 google seeds, scored.
 
 **AC:** ◐ code + wiring done, offline-tested; live discovery (real candidates promoted) needs the key. Threshold `min_opportunity_to_promote=8.0`, budget 30/day — tune in `weights.json`.
 

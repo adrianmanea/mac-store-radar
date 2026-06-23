@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 from radar import __version__
-from radar.run import run_discovery_job, run_export, run_pipeline, run_tagging
+from radar.run import run_discovery_job, run_export, run_pipeline, run_tagging, run_watch
 
 
 def build_parser():
@@ -46,12 +46,20 @@ def build_parser():
         metavar="DIR",
         help="Export all tables to JSONL in DIR (backup), then exit.",
     )
+    parser.add_argument(
+        "--watch",
+        nargs="+",
+        metavar="KEYWORD",
+        help="Add discovered candidate keyword(s) to the watch list (daily-tracked).",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.watch:
+        return run_watch(args.watch)
     if args.export:
         return run_export(args.export)
     if args.discover:

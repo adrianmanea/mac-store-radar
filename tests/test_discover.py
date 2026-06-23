@@ -71,16 +71,28 @@ class FakeQuery:
     def __init__(self, db, table):
         self.db, self.table = db, table
         self._sel = False
+        self._status = None
 
     def select(self, *a, **k):
         self._sel = True
         return self
 
-    def eq(self, *a, **k):
+    def eq(self, col, val, *a, **k):
+        if col == "status":
+            self._status = val
+        return self
+
+    def order(self, *a, **k):
+        return self
+
+    def limit(self, *a, **k):
         return self
 
     def upsert(self, rows, **k):
         self.db.writes.append((self.table, "upsert", rows))
+        if self.table == "niche_candidates":
+            for r in rows:
+                self.db.pool.setdefault(r["keyword"], "new")
         return self
 
     def update(self, fields, **k):
@@ -88,14 +100,17 @@ class FakeQuery:
         return self
 
     def execute(self):
-        if self._sel and self.table in ("niches", "niche_candidates"):
-            return type("R", (), {"data": []})()  # nothing tracked yet -> empty avoid
+        # pending_candidates: select keyword where status='new'
+        if self._sel and self.table == "niche_candidates" and self._status == "new":
+            data = [{"keyword": k} for k, s in self.db.pool.items() if s == "new"]
+            return type("R", (), {"data": data})()
         return type("R", (), {"data": []})()
 
 
 class FakeDB:
     def __init__(self):
         self.writes = []
+        self.pool: dict[str, str] = {}
 
     def table(self, name):
         return FakeQuery(self, name)
@@ -119,8 +134,7 @@ WEIGHTS_MIN = {
 }
 
 
-def test_run_discovery_promotes_when_above_threshold(monkeypatch):
-    # force the engine to return a comfortably promotable score
+def test_run_discovery_validates_and_scores_without_promoting(monkeypatch):
     from radar.pipeline import discover as pipe
 
     class S:
@@ -139,33 +153,35 @@ def test_run_discovery_promotes_when_above_threshold(monkeypatch):
         weights={**_full_weights(), **WEIGHTS_MIN},
     )
     assert summary["generated"] == 2
-    assert summary["promoted"] == 2
-    assert any(t == "niches" and op == "upsert" for (t, op, _r) in db.writes)
+    assert summary["validated"] == 2
+    # the pool is scored as 'validated' — NOTHING enters the watch list
+    assert any(
+        t == "niche_candidates" and op == "update" and f.get("status") == "validated"
+        for (t, op, f) in db.writes
+    )
+    assert not any(t == "niches" and op == "upsert" for (t, op, _r) in db.writes)
 
 
-def test_run_discovery_rejects_below_threshold(monkeypatch):
+def test_run_discovery_rejects_thin_niches(monkeypatch):
     from radar.pipeline import discover as pipe
 
     class S:
-        gated_out = False
-        opportunity = 1.0
-        gate_reason = None
+        gated_out = True
+        opportunity = 0.0
+        gate_reason = "demand below floor"
 
     monkeypatch.setattr(pipe, "score_niche", lambda *a, **k: S())
-    w = {
-        **_full_weights(),
-        "discovery": {
-            "min_opportunity_to_promote": 8.0,
-            "min_apps": 1,
-            "daily_candidate_budget": 5,
-        },
-    }
+    w = {**_full_weights(), **WEIGHTS_MIN}
 
     db = FakeDB()
     itunes = _itunes_returning(_load("search_obsidian.json"), _load("lookup_batch.json"))
     summary = run_discovery(db, itunes, ["weak niche mac"], weights=w)
-    assert summary["promoted"] == 0
+    assert summary["validated"] == 0
     assert summary["rejected"] == 1
+    assert any(
+        t == "niche_candidates" and op == "update" and f.get("status") == "rejected"
+        for (t, op, f) in db.writes
+    )
 
 
 # --- Google Suggest generator ---------------------------------------------

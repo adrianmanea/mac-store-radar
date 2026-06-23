@@ -101,9 +101,24 @@ def run_discovery_job() -> int:
     finally:
         itunes.close()
     print(
-        f"discovery: validated {summary['validated']}, "
-        f"promoted {summary['promoted']} -> {summary['promoted_keywords']}"
+        f"discovery: scored {summary['scored']} candidates "
+        f"({summary['validated']} validated, {summary['rejected']} rejected). "
+        f"Pool grows; nothing auto-tracked — pick with `radar --watch`."
     )
+    return 0
+
+
+def run_watch(keywords: list[str]) -> int:
+    """Promote hand-picked candidates into the watch list (the daily-tracked niches)."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.db import writers
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    for kw in keywords:
+        writers.promote_candidate(db, kw, storefront=cfg.storefront)
+        writers.update_candidate(db, kw, status="watched")
+    print(f"now watching {len(keywords)} niche(s): {keywords}")
     return 0
 
 

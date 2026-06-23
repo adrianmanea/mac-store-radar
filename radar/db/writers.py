@@ -106,6 +106,19 @@ def promote_candidate(client: DBClient, keyword: str, *, storefront: str = "us")
     ).execute()
 
 
+def pending_candidates(client: DBClient, limit: int) -> list[str]:
+    """Un-validated candidates (status 'new'), oldest first — the validation backlog."""
+    res = (
+        client.table("niche_candidates")
+        .select("keyword")
+        .eq("status", "new")
+        .order("generated_at", desc=False)
+        .limit(limit)
+        .execute()
+    )
+    return [r["keyword"] for r in (res.data or [])]
+
+
 def existing_keywords(client: DBClient) -> set[str]:
     """All keywords already in niches + niche_candidates — the discovery avoid-list."""
     out: set[str] = set()
