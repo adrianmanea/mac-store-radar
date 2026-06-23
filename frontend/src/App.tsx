@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { ChartPage } from './pages/ChartPage'
 import { DiscoveryPage } from './pages/DiscoveryPage'
+import { TrendingPage } from './pages/TrendingPage'
 import { WatchlistPage } from './pages/WatchlistPage'
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/discovery" replace />} />
             <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="/trending" element={<TrendingPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/chart" element={<ChartPage />} />
             <Route path="*" element={<Navigate to="/discovery" replace />} />

@@ -187,6 +187,13 @@ Decisions: ~~auto-promote~~ **REVISED** → discovery fills a scored candidate P
 - [x] **Weekly backup workflow** — `backup.yml` (Sun 05:00 UTC) runs export → uploads artifact (90-day retention). Supabase free tier has no guaranteed auto-backups, so this is the safety net.
 - Note: raw API responses (`FileRawStore`) are local/ephemeral in CI — not backed up, but re-fetchable; the scored/snapshot data (the precious part) is covered.
 
+## Trending / outlier detection (added)
+
+- [x] **Chart ingestion** — `pipeline/charts.py` + `radar --charts`: pulls the top-free Mac chart into apps+snapshots (chart_rank), so young/trending entrants enter the catalog (niche search only returns mature incumbents). Folded into daily run. Live: 98 apps ingested.
+- [x] **Per-app velocity** — `pipeline/trends.py` + `radar --trends`: Δratings/day per app from snapshots → `apps.ratings_per_day` via `set_app_velocity` RPC (migration 0005; partial upsert can't update — NOT NULL on insert tuple). Migration 0004 adds the columns + indexes. Live: 93 apps. ⏳ values ~0 until cron has day-over-day data.
+- [x] **Trending page** — `/trending` (nav 📈): apps by velocity or newest, young-only filter, paginated. Surfaces fresh entrants now (Newest), real risers as velocity matures (Velocity).
+- Note: lifetime `ratings ÷ age` proxy rejected — it ranks old giants, not current trend. Only measured Δratings/day is valid; needs cron time-series.
+
 ## Open questions to resolve in-flight (PRD §10 / TECH §12)
 - Lookup batch ceiling: 150 vs 200 (resolve in 1.4).
 - Review pages-deep before diminishing returns (resolve in 1.5 / 5.2).

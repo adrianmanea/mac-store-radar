@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 const NAV = [
   { to: '/discovery', label: 'Discovery', icon: '🧭', hint: 'Scored candidate pool' },
+  { to: '/trending', label: 'Trending', icon: '📈', hint: 'Apps getting traffic now' },
   { to: '/watchlist', label: 'Watchlist', icon: '★', hint: 'Niches you track' },
   { to: '/chart', label: 'Chart', icon: '◳', hint: 'Opportunity × Momentum' },
 ]

@@ -6,11 +6,13 @@ import sys
 
 from radar import __version__
 from radar.run import (
+    run_charts_job,
     run_dedup_job,
     run_discovery_job,
     run_export,
     run_pipeline,
     run_tagging,
+    run_trends_job,
     run_watch,
 )
 
@@ -64,12 +66,26 @@ def build_parser():
         action="store_true",
         help="Collapse candidate niches that resolve to the same competitive set.",
     )
+    parser.add_argument(
+        "--charts",
+        action="store_true",
+        help="Ingest the top-free Mac chart (new/young entrants) into the catalog.",
+    )
+    parser.add_argument(
+        "--trends",
+        action="store_true",
+        help="Recompute per-app rating velocity from snapshots.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.charts:
+        return run_charts_job()
+    if args.trends:
+        return run_trends_job()
     if args.dedup:
         return run_dedup_job()
     if args.watch:

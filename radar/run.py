@@ -48,14 +48,49 @@ def run_pipeline(
     itunes = _itunes_client(cfg)
     try:
         summary = run_scrape(db, itunes, limit_per_niche=limit_per_niche)
-        # Score every niche off the snapshots just written, reusing the same client
-        # (autocomplete depth probe) so demand picks up the proxy signal.
+        # Pull young/trending entrants from the top-free chart into the catalog so they
+        # accumulate snapshots and get velocity-tracked alongside the niche apps.
+        from radar.pipeline.charts import ingest_top_free
+
+        ingest_top_free(db, itunes)
+        # Score niches, then recompute per-app rating velocity from all snapshots.
         scores = score_all_niches(db, itunes)
+        from radar.pipeline.trends import compute_trends
+
+        compute_trends(db)
     finally:
         itunes.close()
 
     print(f"run {summary['run_id']}: {summary['status']} — {summary['notes']}")
     print(f"scored {len(scores)} niches (top: {scores[0]['keyword'] if scores else 'none'})")
+    return 0
+
+
+def run_charts_job() -> int:
+    """Standalone: ingest the top-free Mac chart into the catalog."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.pipeline.charts import ingest_top_free
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    itunes = _itunes_client(cfg)
+    try:
+        res = ingest_top_free(db, itunes)
+    finally:
+        itunes.close()
+    print(f"charts: ingested {res['apps']} top-free apps")
+    return 0
+
+
+def run_trends_job() -> int:
+    """Standalone: recompute per-app rating velocity from snapshots (DB only)."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.pipeline.trends import compute_trends
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    res = compute_trends(db)
+    print(f"trends: velocity for {res['apps_with_velocity']}/{res['apps_total']} apps")
     return 0
 
 
