@@ -1,0 +1,5 @@
+# Runtime deps. Dev tooling lives in pyproject [project.optional-dependencies].dev
+httpx>=0.27
+supabase>=2.7
+anthropic>=0.40
+python-dotenv>=1.0

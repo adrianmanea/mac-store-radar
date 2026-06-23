@@ -1,0 +1,19 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+
+# persisted raw API responses (local dev cache)
+.raw_cache/
+
+# supabase local state + the generated db password (NEVER commit)
+.supabase-db-password.txt
+.branches/
+.temp/

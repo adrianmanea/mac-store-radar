@@ -1,0 +1,54 @@
+{
+  "version": "0.1.0",
+  "_comment": "Single source of truth for scoring weights + gate thresholds (TECH-PRD §5). Python loads it now; the TS live probe mirrors it in M7. Weights are config, not code — tune in M3.8 calibration, do not hardcode in functions.",
+
+  "gates": {
+    "min_demand": 20.0,
+    "min_buildability_multiplier": 0.5,
+    "require_monetization": true,
+    "_note": "Hard zeros applied BEFORE the blend (PRD §4 Gates). min_demand on the 0-100 demand sub-score; require_monetization fails niches with no paid/sub/grossing incumbent."
+  },
+
+  "demand": {
+    "log_ratings_weight": 0.6,
+    "autocomplete_depth_weight": 0.25,
+    "google_volume_weight": 0.15,
+    "_note": "google_volume optional in v0.1; renormalize remaining weights when absent."
+  },
+
+  "competition": {
+    "rating_floor": 50,
+    "count_weight": 0.4,
+    "concentration_weight": 0.3,
+    "incumbent_quality_weight": 0.3,
+    "_note": "count = incumbents above rating_floor; concentration = HHI of rating share; quality = avg incumbent rating."
+  },
+
+  "gap": {
+    "volume_x_lowrating_weight": 0.6,
+    "complaint_density_weight": 0.4,
+    "_note": "complaint_density comes from LLM review clustering (M6); stub to 0 until then."
+  },
+
+  "monetization": {
+    "paid_sub_ratio_weight": 0.5,
+    "price_point_weight": 0.25,
+    "grossing_presence_weight": 0.25,
+    "_note": "grossing_presence falls back to paid/sub ratio if Mac chart feed unavailable (TECH-PRD §9)."
+  },
+
+  "buildability": {
+    "multiplier": {
+      "wrapper": 1.0,
+      "integration": 0.75,
+      "native_complex": 0.4
+    },
+    "default_when_untagged": 1.0,
+    "_note": "Neutral 1.0 until LLM tagging (M6) lands so M3 scoring isn't blocked."
+  },
+
+  "momentum": {
+    "normalize": "minmax_across_niches",
+    "_note": "normalized Δratings/Δt across niche; needs >=2 snapshots (M4)."
+  }
+}
