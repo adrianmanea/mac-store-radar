@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 from radar import __version__
-from radar.run import run_pipeline
+from radar.run import run_pipeline, run_tagging
 
 
 def build_parser():
@@ -26,11 +26,22 @@ def build_parser():
     parser.add_argument(
         "--limit", type=int, default=50, help="Max apps per niche search (default 50)."
     )
+    parser.add_argument(
+        "--tag",
+        nargs="?",
+        type=int,
+        const=50,
+        help="Run the decoupled buildability tagging job on up to N untagged apps "
+        "(default 50) instead of scraping. Requires ANTHROPIC_API_KEY.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.tag is not None:
+        return run_tagging(cap=args.tag)
 
     seed = args.seed
     if seed == []:  # --seed with no args -> default calibration set

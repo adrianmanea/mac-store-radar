@@ -57,3 +57,20 @@ def run_pipeline(
     print(f"run {summary['run_id']}: {summary['status']} — {summary['notes']}")
     print(f"scored {len(scores)} niches (top: {scores[0]['keyword'] if scores else 'none'})")
     return 0
+
+
+def run_tagging(cap: int = 50) -> int:
+    """Decoupled LLM job (M6.2): tag untagged apps with a buildability class.
+
+    Separate from the scrape so a slow/expensive Claude call never blocks data
+    collection. Requires ANTHROPIC_API_KEY.
+    """
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.llm.buildability import tag_untagged
+    from radar.llm.client import anthropic_client
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    res = tag_untagged(db, anthropic_client(cfg), cap=cap)
+    print(f"buildability: tagged {res['tagged']}/{res['seen']} apps")
+    return 0

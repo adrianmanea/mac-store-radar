@@ -114,17 +114,19 @@ Goal: zero-babysit daily run. Wire M1–M4 into one ordered pipeline.
 
 ---
 
-## M6 — LLM jobs (decoupled) (build-seq #6, TECH-PRD §6)
+## M6 — LLM jobs (decoupled) (build-seq #6, TECH-PRD §6) — BUILDABILITY DONE ⏳ needs key
 
 Goal: review→backlog + buildability. Never blocks scrape.
 
-- [ ] **6.1** Anthropic client wrapper, key server-side only, token-spend logging into `scrape_runs.notes`. (S)
-- [ ] **6.2** Buildability tagging — Haiku, one short prompt per new app description → `wrapper|integration|native_complex` → `apps.complexity_class`. Only new/untagged apps. (M)
-- [ ] **6.3** Review clustering — Sonnet, batch ~40–60 reviews/app → JSON (theme, frequency, severity, example_ids) → `unmet_needs`. Defensive JSON parse, strip fences, retry once. (L)
-- [ ] **6.4** Feed real complaint density back into `gap_score` (3.3) + real buildability into multiplier (3.5). (S)
-- [ ] **6.5** Separate Action/step after scrape; batched + capped for cost. (S)
+- [x] **6.1** `llm/client.py` — Anthropic factory, key server-side only (`require_anthropic`), lazy import, Haiku/Sonnet model ids. (S)
+- [x] **6.2** Buildability tagging (`llm/buildability.py`) — Haiku, one prompt/app → `wrapper|integration|native_complex` → `apps.complexity_class`; only untagged apps; defensive label coercion. 7 tests. (M)
+- [ ] **6.3** Review clustering — **deferred: Mac reviews RSS is empty (M1 finding), so there's no review data to cluster.** Revisit if review data appears. (L)
+- [x] **6.4** Buildability feeds the scorer — `buildability_multiplier` already reads `complexity_class`; once apps are tagged, the next score run uses real values + the unbuildable gate bites. (Complaint density stays stubbed per 6.3.) (S)
+- [x] **6.5** Decoupled Actions step (`--tag 60`) after scrape, `continue-on-error`, runs only when the key secret is set. CLI: `radar --tag [N]`. (S)
 
-**AC:** new apps get a complexity class; reviewed apps get clustered unmet_needs; gap + buildability scores now use real LLM signal; cost tracked per run.
+**⏳ BLOCKED on key:** add `ANTHROPIC_API_KEY` to `.env` (local) + GitHub repo secret to activate. Token-spend logging into `scrape_runs.notes` (part of 6.1) still TODO.
+
+**AC:** ◐ tagging code + wiring done and offline-tested; live run + real buildability scores need the key.
 
 ---
 

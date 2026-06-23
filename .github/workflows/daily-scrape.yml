@@ -24,6 +24,9 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 90 # well under the 6h job cap; daily run targets <1h
+    # Job-level so the LLM step's `if:` can test whether the key secret is set.
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -41,5 +44,15 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RADAR_STOREFRONT: us
+
+      # Decoupled LLM job (M6): never blocks the scrape above. Runs only when the key
+      # secret is set, and tolerates failure so a bad LLM run doesn't fail the snapshot.
+      - name: Tag buildability (LLM)
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        continue-on-error: true
+        run: python -m radar --tag 60
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
