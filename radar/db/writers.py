@@ -82,6 +82,39 @@ def seed_niches(client: DBClient, keywords: Sequence[str], *, storefront: str = 
     return len(rows)
 
 
+def insert_candidates(client: DBClient, keywords: Sequence[str], *, source: str) -> int:
+    """Record new discovery candidates (M9). Idempotent on the keyword PK."""
+    rows = [{"keyword": k, "source": source, "status": "new"} for k in keywords]
+    if rows:
+        client.table("niche_candidates").upsert(
+            rows, on_conflict="keyword", ignore_duplicates=True
+        ).execute()
+    return len(rows)
+
+
+def update_candidate(client: DBClient, keyword: str, **fields: Any) -> None:
+    """Update a candidate's status/score after validation (M9)."""
+    client.table("niche_candidates").update(fields).eq("keyword", keyword).execute()
+
+
+def promote_candidate(client: DBClient, keyword: str, *, storefront: str = "us") -> None:
+    """Promote a validated candidate into the watched niches table (M9 auto-promote)."""
+    client.table("niches").upsert(
+        {"keyword": keyword, "display_name": keyword, "storefront": storefront, "is_watched": True},
+        on_conflict="keyword",
+        ignore_duplicates=True,
+    ).execute()
+
+
+def existing_keywords(client: DBClient) -> set[str]:
+    """All keywords already in niches + niche_candidates — the discovery avoid-list."""
+    out: set[str] = set()
+    for table in ("niches", "niche_candidates"):
+        res = client.table(table).select("keyword").execute()
+        out.update(r["keyword"] for r in (res.data or []))
+    return out
+
+
 def start_run(client: DBClient) -> int:
     """Open a scrape_runs row, return its id (M2.7)."""
     res = client.table("scrape_runs").insert({"status": "partial"}).execute()

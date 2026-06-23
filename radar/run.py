@@ -59,6 +59,26 @@ def run_pipeline(
     return 0
 
 
+def run_discovery_job() -> int:
+    """Decoupled discovery job (M9): generate -> validate -> auto-promote. Requires key."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.llm.client import anthropic_client
+    from radar.pipeline.discover import run_discovery
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    itunes = _itunes_client(cfg)
+    try:
+        summary = run_discovery(db, itunes, anthropic_client(cfg))
+    finally:
+        itunes.close()
+    print(
+        f"discovery: generated {summary['generated']}, "
+        f"promoted {summary['promoted']} -> {summary['promoted_keywords']}"
+    )
+    return 0
+
+
 def run_tagging(cap: int = 50) -> int:
     """Decoupled LLM job (M6.2): tag untagged apps with a buildability class.
 

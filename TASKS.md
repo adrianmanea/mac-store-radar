@@ -162,6 +162,21 @@ Goal: legible, read-only view + instant live probe.
 - [ ] **Per-app velocity weighting** — the stronger liveness signal: weight ratings by recent Δratings/day once the cron has ≥2 days of snapshots (extends M4 to per-app, feeds demand). ⏳ needs day-over-day data.
 - [ ] **Staleness display** — surface last-update age / freshness in the frontend drill-down (M7.5).
 
+## M9 — Discovery engine (auto keyword generation) — BUILT ⏳ needs key
+
+Goal: stop hand-seeding. Self-feeding generate → validate → auto-promote funnel (PRD open q #1, expanded).
+
+- [x] **9.1** `niche_candidates` table + migration 0002 (applied live). (S)
+- [x] **9.2** LLM generator (`llm/discover.py`) — Claude (Sonnet) proposes arbitrage-shaped keywords, given an avoid-list of already-tracked terms; defensive JSON-array parse. (M)
+- [x] **9.3** Funnel (`pipeline/discover.py`) — generate → insert candidates → per-candidate search+lookup+score (budget-capped) → auto-promote `opportunity ≥ threshold` into watched `niches`, else reject with reason. Config in `weights.json` `discovery`. (L)
+- [x] **9.4** CLI `radar --discover` + decoupled, key-guarded daily Actions step. (S)
+- [ ] **9.5** App-set dedup — collapse candidates that resolve to the same competitive set (Jaccard on app-ids) so volume ≠ duplicate niches. Currently dedup is keyword-level only. (M)
+- [ ] **9.6** Catalog-harvest generator (n-grams from scraped titles/categories) as a no-key volume source alongside LLM. (M)
+
+Decisions: **LLM generator** + **auto-promote** (your call). Generators dropped: autocomplete (Apple endpoint dead — 0 hints). 8 tests (parse + funnel). **⏳ needs `ANTHROPIC_API_KEY` to run.**
+
+**AC:** ◐ code + wiring done, offline-tested; live discovery (real candidates promoted) needs the key. Threshold `min_opportunity_to_promote=8.0`, budget 30/day — tune in `weights.json`.
+
 ## Open questions to resolve in-flight (PRD §10 / TECH §12)
 - Lookup batch ceiling: 150 vs 200 (resolve in 1.4).
 - Review pages-deep before diminishing returns (resolve in 1.5 / 5.2).

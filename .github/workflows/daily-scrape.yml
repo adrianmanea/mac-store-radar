@@ -56,3 +56,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Discovery (M9): Claude proposes niches, validate+score, auto-promote winners into
+      # the watch list so tomorrow's scrape tracks them. Decoupled + key-guarded.
+      - name: Discover niches (LLM)
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        continue-on-error: true
+        run: python -m radar --discover
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

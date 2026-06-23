@@ -57,5 +57,12 @@
   "momentum": {
     "normalize": "minmax_across_niches",
     "_note": "normalized Δratings/Δt across niche; needs >=2 snapshots (M4)."
+  },
+
+  "discovery": {
+    "min_opportunity_to_promote": 8.0,
+    "min_apps": 5,
+    "daily_candidate_budget": 30,
+    "_note": "M9: validated candidates scoring >= min_opportunity_to_promote (and not gated, with >= min_apps incumbents) auto-promote into the watched niches table. daily_candidate_budget caps how many new candidates are validated per run to stay under the iTunes rate ceiling."
   }
 }
