@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import { Discovery } from './components/Discovery'
 import { Scatter } from './components/Scatter'
 import { useNicheScores } from './hooks/useNicheScores'
 import type { NicheScoreRow, SortKey } from './types'
 
-type View = 'table' | 'scatter'
+type View = 'table' | 'scatter' | 'discovery'
 
 const COLUMNS: { key: SortKey; label: string; estimate?: boolean }[] = [
   { key: 'opportunity', label: 'Opportunity' },
@@ -73,7 +74,7 @@ export default function App() {
             </p>
           </div>
           <div className="flex rounded-md border border-zinc-800 p-0.5 text-sm">
-            {(['table', 'scatter'] as const).map((v) => (
+            {(['table', 'scatter', 'discovery'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -87,18 +88,20 @@ export default function App() {
           </div>
         </header>
 
-        {loading && <SkeletonTable />}
+        {view === 'discovery' && <Discovery />}
 
-        {error && (
+        {view !== 'discovery' && loading && <SkeletonTable />}
+
+        {view !== 'discovery' && error && (
           <div className="rounded-lg border border-red-900/50 bg-red-950/40 p-4 text-sm text-red-300">
             Failed to load scores: {error}
           </div>
         )}
 
-        {!loading && !error && rows.length === 0 && (
+        {view !== 'discovery' && !loading && !error && rows.length === 0 && (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400">
-            No niche scores yet. Run the scraper:{' '}
-            <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-200">radar --seed</code>
+            No tracked niches yet. Go to <span className="text-zinc-200">discovery</span> and Track
+            the candidates worth building.
           </div>
         )}
 
