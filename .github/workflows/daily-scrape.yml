@@ -57,10 +57,10 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
-      # Discovery (M9): Claude proposes niches, validate+score, auto-promote winners into
-      # the watch list so tomorrow's scrape tracks them. Decoupled + key-guarded.
-      - name: Discover niches (LLM)
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+      # Discovery (M9): Google Suggest (free, no key) proposes niches — plus Claude if the
+      # key is set — validate+score, auto-promote winners so tomorrow's scrape tracks them.
+      # Runs unconditionally (Google needs no key); decoupled so it never blocks the scrape.
+      - name: Discover niches
         continue-on-error: true
         run: python -m radar --discover
         env:

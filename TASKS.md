@@ -171,7 +171,9 @@ Goal: stop hand-seeding. Self-feeding generate → validate → auto-promote fun
 - [x] **9.3** Funnel (`pipeline/discover.py`) — generate → insert candidates → per-candidate search+lookup+score (budget-capped) → auto-promote `opportunity ≥ threshold` into watched `niches`, else reject with reason. Config in `weights.json` `discovery`. (L)
 - [x] **9.4** CLI `radar --discover` + decoupled, key-guarded daily Actions step. (S)
 - [ ] **9.5** App-set dedup — collapse candidates that resolve to the same competitive set (Jaccard on app-ids) so volume ≠ duplicate niches. Currently dedup is keyword-level only. (M)
-- [ ] **9.6** Catalog-harvest generator (n-grams from scraped titles/categories) as a no-key volume source alongside LLM. (M)
+- [x] **9.6** **Google Suggest generator** (`adapters/google_suggest.py` + `google_candidates`) — free, no-key, real high-volume completions (Apple's autocomplete is dead). Now the DEFAULT discovery source; LLM layered on when key present. Funnel refactored source-agnostic. Discovery Actions step no longer key-gated. (M)
+- [ ] **9.7** Use Google suggestion order/presence as the demand proxy (fills the dead Apple-autocomplete signal). (S)
+- [ ] **9.8** Catalog-harvest generator (n-grams from scraped titles/categories) as a third no-key source. (M)
 
 Decisions: **LLM generator** + **auto-promote** (your call). Generators dropped: autocomplete (Apple endpoint dead — 0 hints). 8 tests (parse + funnel). **⏳ needs `ANTHROPIC_API_KEY` to run.**
 

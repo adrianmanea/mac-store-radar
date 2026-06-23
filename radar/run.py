@@ -60,20 +60,43 @@ def run_pipeline(
 
 
 def run_discovery_job() -> int:
-    """Decoupled discovery job (M9): generate -> validate -> auto-promote. Requires key."""
+    """Decoupled discovery job (M9): generate -> validate -> auto-promote.
+
+    Google Suggest is the default generator (free, no key). If ANTHROPIC_API_KEY is set,
+    Claude candidates are added on top. Either way, the funnel validates + scores + auto-
+    promotes the winners.
+    """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    from radar.llm.client import anthropic_client
-    from radar.pipeline.discover import run_discovery
+    from radar.db import writers
+    from radar.pipeline.discover import google_candidates, run_discovery
+    from radar.seeds import GOOGLE_SEED_PREFIXES
 
     cfg = Config.load()
     db = service_client(cfg)
     itunes = _itunes_client(cfg)
     try:
-        summary = run_discovery(db, itunes, anthropic_client(cfg))
+        avoid = writers.existing_keywords(db)
+        candidates = google_candidates(itunes, GOOGLE_SEED_PREFIXES, avoid=avoid)
+
+        if cfg.anthropic_api_key:
+            from radar.llm.client import anthropic_client
+            from radar.llm.discover import generate_candidates
+
+            llm = generate_candidates(anthropic_client(cfg), n=30, avoid=sorted(avoid))
+            # de-dup the union, preserving order (google first)
+            merged: dict[str, None] = dict.fromkeys(candidates)
+            for c in llm:
+                merged.setdefault(c, None)
+            candidates = list(merged)
+            print(f"discovery sources: google + llm -> {len(candidates)} candidates")
+        else:
+            print(f"discovery source: google only (no key) -> {len(candidates)} candidates")
+
+        summary = run_discovery(db, itunes, candidates)
     finally:
         itunes.close()
     print(
-        f"discovery: generated {summary['generated']}, "
+        f"discovery: validated {summary['validated']}, "
         f"promoted {summary['promoted']} -> {summary['promoted_keywords']}"
     )
     return 0

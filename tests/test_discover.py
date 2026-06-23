@@ -129,16 +129,17 @@ def test_run_discovery_promotes_when_above_threshold(monkeypatch):
         gate_reason = None
 
     monkeypatch.setattr(pipe, "score_niche", lambda *a, **k: S())
-    monkeypatch.setattr(pipe, "load_weights", lambda: {**_full_weights(), **WEIGHTS_MIN})
 
     db = FakeDB()
     itunes = _itunes_returning(_load("search_obsidian.json"), _load("lookup_batch.json"))
-    anthropic = FakeAnthropic('["new niche mac", "another niche mac"]')
-
-    summary = run_discovery(db, itunes, anthropic, weights={**_full_weights(), **WEIGHTS_MIN})
+    summary = run_discovery(
+        db,
+        itunes,
+        ["new niche mac", "another niche mac"],
+        weights={**_full_weights(), **WEIGHTS_MIN},
+    )
     assert summary["generated"] == 2
     assert summary["promoted"] == 2
-    # each promotion upserts into niches
     assert any(t == "niches" and op == "upsert" for (t, op, _r) in db.writes)
 
 
@@ -162,10 +163,46 @@ def test_run_discovery_rejects_below_threshold(monkeypatch):
 
     db = FakeDB()
     itunes = _itunes_returning(_load("search_obsidian.json"), _load("lookup_batch.json"))
-    anthropic = FakeAnthropic('["weak niche mac"]')
-    summary = run_discovery(db, itunes, anthropic, weights=w)
+    summary = run_discovery(db, itunes, ["weak niche mac"], weights=w)
     assert summary["promoted"] == 0
     assert summary["rejected"] == 1
+
+
+# --- Google Suggest generator ---------------------------------------------
+
+GOOGLE_BODY = (
+    b'["android transfer mac",["android transfer mac","android transfer macos",'
+    b'"best transfer tool","android file transfer mac app"],[],{}]'
+)
+
+
+def test_google_suggest_parse():
+    from radar.adapters import google_suggest
+
+    out = google_suggest.parse(GOOGLE_BODY)
+    assert out[0] == "android transfer mac"
+    assert "best transfer tool" in out
+
+
+def test_google_suggest_parse_garbage():
+    from radar.adapters import google_suggest
+
+    assert google_suggest.parse(b"not json") == []
+
+
+def test_google_candidates_filters_to_mac_and_excludes_avoid():
+    from radar.pipeline.discover import google_candidates
+
+    itunes = ITunesClient(
+        limiter=TokenBucket(per_minute=10_000_000, capacity=1000),
+        transport=httpx.MockTransport(lambda req: httpx.Response(200, content=GOOGLE_BODY)),
+        sleep=lambda _s: None,
+    )
+    out = google_candidates(itunes, ["android transfer mac"], avoid={"android transfer mac"})
+    # 'best transfer tool' dropped (no 'mac'); the seed itself dropped (in avoid)
+    assert "best transfer tool" not in out
+    assert "android transfer mac" not in out
+    assert "android transfer macos" in out
 
 
 def _full_weights():
