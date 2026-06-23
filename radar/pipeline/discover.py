@@ -13,6 +13,8 @@ ceiling.
 from __future__ import annotations
 
 import logging
+import re
+from collections import Counter
 from datetime import datetime, timezone
 
 from radar.adapters import google_suggest, lookup, search
@@ -22,6 +24,69 @@ from radar.scoring.engine import NicheInputs, score_niche
 from radar.scoring.weights import load_weights
 
 log = logging.getLogger("radar.pipeline")
+
+# Generic / marketing words that aren't niche signals — dropped from harvested prefixes.
+_STOP = {
+    "your",
+    "with",
+    "that",
+    "make",
+    "free",
+    "best",
+    "easy",
+    "tool",
+    "tools",
+    "apps",
+    "mac",
+    "macos",
+    "macbook",
+    "app",
+    "pro",
+    "plus",
+    "lite",
+    "edition",
+    "studio",
+    "manager",  # too generic alone; kept in bigrams
+}
+_WORD = re.compile(r"[a-z]{4,}")
+
+
+def prefixes_from_names(
+    names: list[str], *, top_words: int = 20, top_bigrams: int = 15
+) -> list[str]:
+    """Extract candidate search prefixes from app titles (pure, testable).
+
+    Frequent single words + bigrams that competitors put in their titles ARE the niche
+    signals. Each becomes a '<term> mac' prefix for Google Suggest to expand.
+    """
+    words: Counter[str] = Counter()
+    bigrams: Counter[str] = Counter()
+    for name in names:
+        toks = [t for t in _WORD.findall((name or "").lower())]
+        meaningful = [t for t in toks if t not in _STOP]
+        words.update(meaningful)
+        for i in range(len(toks) - 1):
+            a, b = toks[i], toks[i + 1]
+            if a not in _STOP and b not in _STOP:
+                bigrams.update([f"{a} {b}"])
+
+    prefixes: list[str] = []
+    for term, _ in words.most_common(top_words):
+        prefixes.append(f"{term} mac")
+    for bg, _ in bigrams.most_common(top_bigrams):
+        prefixes.append(f"{bg} mac")
+
+    # de-dup, preserve order
+    return list(dict.fromkeys(prefixes))
+
+
+def harvest_prefixes(db, *, limit: int = 2000) -> list[str]:
+    """Read scraped app titles and derive seed prefixes (catalog-harvest generator)."""
+    res = db.table("apps").select("name").limit(limit).execute()
+    names = [r["name"] for r in (res.data or []) if r.get("name")]
+    out = prefixes_from_names(names)
+    log.info("harvest: %d prefixes from %d app titles", len(out), len(names))
+    return out
 
 
 def google_candidates(

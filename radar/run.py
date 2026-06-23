@@ -68,7 +68,7 @@ def run_discovery_job() -> int:
     """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     from radar.db import writers
-    from radar.pipeline.discover import google_candidates, run_discovery
+    from radar.pipeline.discover import google_candidates, harvest_prefixes, run_discovery
     from radar.seeds import GOOGLE_SEED_PREFIXES
 
     cfg = Config.load()
@@ -76,7 +76,10 @@ def run_discovery_job() -> int:
     itunes = _itunes_client(cfg)
     try:
         avoid = writers.existing_keywords(db)
-        candidates = google_candidates(itunes, GOOGLE_SEED_PREFIXES, avoid=avoid)
+        # Seed prefixes = the static hand-set list + prefixes harvested from the catalog
+        # we've already scraped (self-bootstrapping; the more we scrape, the more it finds).
+        seeds = list(dict.fromkeys(GOOGLE_SEED_PREFIXES + harvest_prefixes(db)))
+        candidates = google_candidates(itunes, seeds, avoid=avoid)
 
         # LLM augmentation is best-effort: Google already produced candidates, so a
         # missing key / missing dependency / API error must not abort the run.
