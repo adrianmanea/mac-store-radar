@@ -1,0 +1,45 @@
+name: daily-scrape
+
+on:
+  schedule:
+    # 06:00 UTC daily. Actions cron is best-effort (can lag minutes under load) —
+    # fine for a daily momentum snapshot (TECH-PRD §8).
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Seed the default 20-niche calibration set before scraping'
+        type: boolean
+        default: false
+      limit:
+        description: 'Max apps per niche search'
+        default: '200'
+
+# One run at a time; a long run must never overlap the next day's trigger.
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90 # well under the 6h job cap; daily run targets <1h
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: pip install -e .
+      - name: Run scrape + score
+        run: |
+          if [ "${{ inputs.seed }}" = "true" ]; then
+            python -m radar --seed --limit "${{ inputs.limit || 200 }}"
+          else
+            python -m radar --limit "${{ inputs.limit || 200 }}"
+          fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RADAR_STOREFRONT: us

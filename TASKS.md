@@ -102,10 +102,15 @@ Goal: zero-babysit daily run. Wire M1–M4 into one ordered pipeline.
 - [x] **5.1** `pipeline/scrape.py` + `radar.run` — niche resolve → search → dedupe → batched lookup → upsert+snapshot+niche_apps → run record. Score step in `pipeline/score.py`. (Review fetch + cron still pending: 5.2–5.4.) Live-proven. (L)
 - [ ] **5.2** Bounded review fetch priority (§4.4): new apps now / watched >7d / slow rotation, capped ~150 apps/run. (M)
   - Note: reviews RSS empty for Mac (M1 finding) — gap signal stays stubbed regardless, so this is low priority until/unless review data appears.
-- [ ] **5.3** Daily Actions workflow (`cron: '0 6 * * *'`) + `workflow_dispatch`, secrets wired, `timeout-minutes: 90`. (S)
-- [ ] **5.4** Fail-loud on `status='failed'`; partial-run self-heal via rotation. (S)
+- [x] **5.3** `.github/workflows/daily-scrape.yml` — `cron: '0 6 * * *'` + `workflow_dispatch` (seed/limit inputs), concurrency guard, `timeout-minutes: 90`, secrets wired. `radar.run` now scrapes **and** scores in one pass. (S)
+- [◐] **5.4** Fail-loud: any exception → non-zero exit → job fails → GitHub notifies. Explicit `status='partial'` self-heal (resume rotation) still TODO. (S)
 
-**AC:** scheduled run completes under target wall-clock (<1h), stays under rate ceiling, writes a clean `scrape_runs` row unattended.
+**AC:** ✅ locally `radar` runs scrape+score unattended (run 2 ok, 126 snapshots across 2 capture times). ⏳ scheduled run needs activation: push to origin + add repo secrets.
+
+**To activate the cron (yours):**
+1. `git push origin main`
+2. Repo → Settings → Secrets and variables → Actions → add `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (values in your `.env`). `ANTHROPIC_API_KEY` optional until M6.
+3. (optional) Actions → daily-scrape → Run workflow with `seed=true` once to load all 20 niches.
 
 ---
 

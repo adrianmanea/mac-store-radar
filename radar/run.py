@@ -15,6 +15,7 @@ from radar.adapters.rawstore import FileRawStore
 from radar.config import Config
 from radar.db import writers
 from radar.db.client import service_client
+from radar.pipeline.score import score_all_niches
 from radar.pipeline.scrape import run_scrape
 from radar.scoring.weights import load_weights
 
@@ -47,7 +48,12 @@ def run_pipeline(
     itunes = _itunes_client(cfg)
     try:
         summary = run_scrape(db, itunes, limit_per_niche=limit_per_niche)
+        # Score every niche off the snapshots just written, reusing the same client
+        # (autocomplete depth probe) so demand picks up the proxy signal.
+        scores = score_all_niches(db, itunes)
     finally:
         itunes.close()
+
     print(f"run {summary['run_id']}: {summary['status']} — {summary['notes']}")
+    print(f"scored {len(scores)} niches (top: {scores[0]['keyword'] if scores else 'none'})")
     return 0
