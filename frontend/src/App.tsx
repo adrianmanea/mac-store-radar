@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { Scatter } from './components/Scatter'
 import { useNicheScores } from './hooks/useNicheScores'
 import type { NicheScoreRow, SortKey } from './types'
+
+type View = 'table' | 'scatter'
 
 const COLUMNS: { key: SortKey; label: string; estimate?: boolean }[] = [
   { key: 'opportunity', label: 'Opportunity' },
@@ -39,6 +42,7 @@ function OpportunityBadge({ row }: { row: NicheScoreRow }) {
 export default function App() {
   const { rows, loading, error } = useNicheScores()
   const [sort, setSort] = useState<SortKey>('opportunity')
+  const [view, setView] = useState<View>('table')
 
   const sorted = useMemo(
     () => [...rows].sort((a, b) => (b[sort] ?? -1) - (a[sort] ?? -1)),
@@ -48,12 +52,26 @@ export default function App() {
   return (
     <div className="min-h-full bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">Mac App Opportunity Radar</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Under-served niches with proven demand and weak incumbents. Sorted by{' '}
-            <span className="text-zinc-200">{sort}</span>.
-          </p>
+        <header className="mb-8 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Mac App Opportunity Radar</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Under-served niches with proven demand and weak incumbents.
+            </p>
+          </div>
+          <div className="flex rounded-md border border-zinc-800 p-0.5 text-sm">
+            {(['table', 'scatter'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`rounded px-3 py-1 capitalize ${
+                  view === v ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
         </header>
 
         {loading && <SkeletonTable />}
@@ -71,7 +89,9 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !error && rows.length > 0 && (
+        {!loading && !error && rows.length > 0 && view === 'scatter' && <Scatter rows={rows} />}
+
+        {!loading && !error && rows.length > 0 && view === 'table' && (
           <div className="overflow-hidden rounded-lg border border-zinc-800">
             <table className="w-full text-sm">
               <thead className="bg-zinc-900 text-left text-xs uppercase tracking-wide text-zinc-400">

@@ -83,15 +83,15 @@ Engine: 44 tests pass. **Validated on real data** — scored 3 live niches, wrot
 
 ---
 
-## M4 — Momentum (build-seq #4)
+## M4 — Momentum (build-seq #4) — CODE DONE ⏳ real signal needs day-over-day data
 
 Goal: the signal manual research can't give. Needs ≥2 days of snapshots.
 
-- [ ] **4.1** Velocity query — per-app Δratings/Δt window function → averaged to niche level (TECH-PRD §2 query). (M)
-- [ ] **4.2** Normalize momentum 0–100 across niches; write into `niche_scores.momentum`. (S)
-- [ ] **4.3** Retroactive validation — does velocity flag a known riser before it ranks? (PRD §9 momentum validation). (M)
+- [x] **4.1** `scoring/momentum.py` — per-app Δratings/Δt from two latest snapshots, averaged to niche. Tolerant ISO parser (Postgres 5-digit fractions on py<3.11). (M)
+- [x] **4.2** `normalize_momentum` min-max 0–100 across niches (None when <2 snapshots, neutral 50 on tie); written into `niche_scores.momentum` + `ratings_per_day` in raw_inputs. 11 tests. (S)
+- [ ] **4.3** Retroactive validation — needs real day-over-day data (PRD §9). ⏳ (M)
 
-**AC:** after ≥2 daily snapshots, momentum values populate and a known riser surfaces in the top velocity band.
+**AC:** ✅ momentum populates for niches with ≥2 snapshots (uniformly 50 now — correct, intraday deltas ≈ 0); None for single-snapshot niches. Real spread + riser validation come once the cron has run multiple days.
 
 ---
 
@@ -135,7 +135,7 @@ Goal: legible, read-only view + instant live probe.
 - [x] **7.1** Vite + React + TS + Tailwind v4 scaffold in `frontend/`. `pnpm build` clean (tsc + vite). Cloudflare Pages deploy still TODO. (S)
 - [x] **7.2** Supabase JS read client (`lib/supabase.ts`, anon key from `VITE_*` env, RLS). Anon read + niches join verified live. (S)
 - [x] **7.3** Niche table — sortable by every sub-score incl. Opportunity / Momentum; gated niches badged with reason tooltip. (M)
-- [ ] **7.4** Opportunity × Momentum scatter (the quadrant map). (M)
+- [x] **7.4** Opportunity × Momentum scatter (`components/Scatter.tsx`, pure SVG, quadrant guides, auto-scaled Y, table/scatter toggle). Niches without momentum listed below, not dropped. (M)
 - [ ] **7.5** Niche drill-down — incumbent list, per-app rating-history sparkline, version cadence, clustered unmet needs. (L)
 - [ ] **7.6** **Live probe** — keyword in → JSONP iTunes call → score via TS-mirrored scoring spec (shares `weights.json`), no DB hop. (L)
 - [x] **7.7** Real empty / skeleton-loading / error states; demand labeled `est.` (no false precision). (M)
