@@ -14,6 +14,7 @@ from radar.adapters.client import ITunesClient
 from radar.adapters.errors import AdapterError
 from radar.adapters.models import AppMetadata
 from radar.scoring.engine import NicheInputs, score_niche
+from radar.scoring.momentum import niche_velocity, normalize_momentum
 from radar.scoring.weights import load_weights
 
 log = logging.getLogger("radar.pipeline")
@@ -52,6 +53,23 @@ def _niche_apps(db, niche_id: int) -> list[int]:
     return [r["app_id"] for r in rows if r["captured_at"] == latest]
 
 
+def _snapshots_by_app(db, app_ids: list[int]) -> dict[int, list[dict]]:
+    """Full snapshot history per app (ascending time), for velocity (M4)."""
+    if not app_ids:
+        return {}
+    res = (
+        db.table("app_snapshots")
+        .select("app_id,rating_count,captured_at")
+        .in_("app_id", app_ids)
+        .order("captured_at", desc=False)
+        .execute()
+    )
+    out: dict[int, list[dict]] = {}
+    for row in res.data or []:
+        out.setdefault(row["app_id"], []).append(row)
+    return out
+
+
 def _build_metadata(db, app_ids: list[int]) -> list[AppMetadata]:
     if not app_ids:
         return []
@@ -87,7 +105,9 @@ def score_all_niches(
     weights = load_weights()
     niches = (db.table("niches").select("id,keyword").execute()).data or []
 
-    summaries: list[dict] = []
+    # Pass 1: per-niche sub-scores + Opportunity + raw velocity (ratings/day).
+    computed: list[dict] = []
+    raw_velocity: dict[int, float | None] = {}
     for n in niches:
         app_ids = _niche_apps(db, n["id"])
         apps = _build_metadata(db, app_ids)
@@ -102,6 +122,17 @@ def score_all_niches(
                 log.warning("autocomplete failed for %s: %s", n["keyword"], exc)
 
         score = score_niche(NicheInputs(apps=apps, autocomplete_depth=depth), weights)
+        raw_velocity[n["id"]] = niche_velocity(_snapshots_by_app(db, app_ids))
+        computed.append({"niche": n, "score": score, "n_apps": len(apps)})
+
+    # Momentum is relative: normalize raw velocities across all niches to 0–100.
+    momentum = normalize_momentum(raw_velocity)
+
+    # Pass 2: persist niche_scores (now with momentum) + build the summary.
+    summaries: list[dict] = []
+    for c in computed:
+        n, score = c["niche"], c["score"]
+        mom = momentum.get(n["id"])
         db.table("niche_scores").upsert(
             {
                 "niche_id": n["id"],
@@ -112,10 +143,10 @@ def score_all_niches(
                 "monetization": score.monetization,
                 "buildability": score.buildability,
                 "opportunity": score.opportunity,
-                "momentum": score.momentum,
+                "momentum": mom,
                 "gated_out": score.gated_out,
                 "gate_reason": score.gate_reason,
-                "raw_inputs": score.raw_inputs,
+                "raw_inputs": {**score.raw_inputs, "ratings_per_day": raw_velocity.get(n["id"])},
             },
             on_conflict="niche_id,captured_at",
         ).execute()
@@ -123,8 +154,9 @@ def score_all_niches(
         summaries.append(
             {
                 "keyword": n["keyword"],
-                "n_apps": len(apps),
+                "n_apps": c["n_apps"],
                 "opportunity": round(score.opportunity, 1),
+                "momentum": round(mom, 1) if mom is not None else None,
                 "demand": round(score.demand, 1),
                 "competition": round(score.competition, 1),
                 "gap": round(score.gap, 1),
