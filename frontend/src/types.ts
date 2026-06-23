@@ -12,6 +12,7 @@ export interface NicheScoreRow {
   momentum: number | null
   gated_out: boolean
   gate_reason: string | null
+  raw_inputs: { avg_freshness?: number | null } | null
   niches: { keyword: string; display_name: string | null } | null
 }
 

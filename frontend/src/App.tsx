@@ -18,6 +18,19 @@ function num(v: number | null): string {
   return v == null ? '—' : v.toFixed(1)
 }
 
+function Liveness({ row }: { row: NicheScoreRow }) {
+  const f = row.raw_inputs?.avg_freshness
+  if (f == null) return <span className="text-zinc-500">—</span>
+  const pct = Math.round(f * 100)
+  const tone =
+    f >= 0.66 ? 'text-emerald-300' : f >= 0.4 ? 'text-amber-300' : 'text-red-300'
+  return (
+    <span className={tone} title="Avg incumbent liveness — recency of last update (freshness-weighted)">
+      {pct}%
+    </span>
+  )
+}
+
 function OpportunityBadge({ row }: { row: NicheScoreRow }) {
   if (row.gated_out) {
     return (
@@ -118,6 +131,9 @@ export default function App() {
                       </button>
                     </th>
                   ))}
+                  <th className="px-4 py-3 font-medium" title="Avg incumbent liveness">
+                    Live
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -134,6 +150,9 @@ export default function App() {
                     <td className="px-4 py-3 text-zinc-300">{num(row.competition)}</td>
                     <td className="px-4 py-3 text-zinc-300">{num(row.gap)}</td>
                     <td className="px-4 py-3 text-zinc-300">{num(row.monetization)}</td>
+                    <td className="px-4 py-3">
+                      <Liveness row={row} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

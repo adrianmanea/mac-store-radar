@@ -18,7 +18,7 @@ export function useNicheScores(): State {
       const { data, error } = await supabase
         .from('niche_scores')
         .select(
-          'niche_id, captured_at, demand, competition, gap, monetization, buildability, opportunity, momentum, gated_out, gate_reason, niches(keyword, display_name)',
+          'niche_id, captured_at, demand, competition, gap, monetization, buildability, opportunity, momentum, gated_out, gate_reason, raw_inputs, niches(keyword, display_name)',
         )
         .order('captured_at', { ascending: false })
 
