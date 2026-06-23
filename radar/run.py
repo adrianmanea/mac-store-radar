@@ -78,17 +78,22 @@ def run_discovery_job() -> int:
         avoid = writers.existing_keywords(db)
         candidates = google_candidates(itunes, GOOGLE_SEED_PREFIXES, avoid=avoid)
 
+        # LLM augmentation is best-effort: Google already produced candidates, so a
+        # missing key / missing dependency / API error must not abort the run.
         if cfg.anthropic_api_key:
-            from radar.llm.client import anthropic_client
-            from radar.llm.discover import generate_candidates
+            try:
+                from radar.llm.client import anthropic_client
+                from radar.llm.discover import generate_candidates
 
-            llm = generate_candidates(anthropic_client(cfg), n=30, avoid=sorted(avoid))
-            # de-dup the union, preserving order (google first)
-            merged: dict[str, None] = dict.fromkeys(candidates)
-            for c in llm:
-                merged.setdefault(c, None)
-            candidates = list(merged)
-            print(f"discovery sources: google + llm -> {len(candidates)} candidates")
+                llm = generate_candidates(anthropic_client(cfg), n=30, avoid=sorted(avoid))
+                merged: dict[str, None] = dict.fromkeys(candidates)
+                for c in llm:
+                    merged.setdefault(c, None)
+                candidates = list(merged)
+                print(f"discovery sources: google + llm -> {len(candidates)} candidates")
+            except Exception as exc:  # noqa: BLE001 - augmentation only; degrade to google
+                logging.warning("LLM augmentation failed (%s); continuing with google", exc)
+                print(f"discovery source: google only (llm failed) -> {len(candidates)} candidates")
         else:
             print(f"discovery source: google only (no key) -> {len(candidates)} candidates")
 
@@ -99,6 +104,19 @@ def run_discovery_job() -> int:
         f"discovery: validated {summary['validated']}, "
         f"promoted {summary['promoted']} -> {summary['promoted_keywords']}"
     )
+    return 0
+
+
+def run_export(out_dir: str) -> int:
+    """Export every table to JSONL for backup (no LLM/iTunes; just DB reads)."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    from radar.db.export import export_all
+
+    cfg = Config.load()
+    db = service_client(cfg)
+    manifest = export_all(db, out_dir)
+    n_tables = len(manifest["tables"])
+    print(f"exported {manifest['total_rows']} rows across {n_tables} tables -> {out_dir}")
     return 0
 
 

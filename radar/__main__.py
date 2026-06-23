@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 
 from radar import __version__
-from radar.run import run_discovery_job, run_pipeline, run_tagging
+from radar.run import run_discovery_job, run_export, run_pipeline, run_tagging
 
 
 def build_parser():
@@ -37,9 +37,14 @@ def build_parser():
     parser.add_argument(
         "--discover",
         action="store_true",
-        help="Run the discovery job: Claude generates candidate niches, each is "
-        "validated + scored, winners auto-promote into the watch list. Requires "
-        "ANTHROPIC_API_KEY.",
+        help="Run the discovery job: Google Suggest (+ Claude if key set) generates "
+        "candidate niches, each validated + scored, winners auto-promote into the "
+        "watch list.",
+    )
+    parser.add_argument(
+        "--export",
+        metavar="DIR",
+        help="Export all tables to JSONL in DIR (backup), then exit.",
     )
     return parser
 
@@ -47,6 +52,8 @@ def build_parser():
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
+    if args.export:
+        return run_export(args.export)
     if args.discover:
         return run_discovery_job()
     if args.tag is not None:

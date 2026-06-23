@@ -1,0 +1,29 @@
+name: backup
+
+on:
+  schedule:
+    - cron: '0 5 * * 0' # 05:00 UTC every Sunday
+  workflow_dispatch: {}
+
+# The Supabase free tier has no guaranteed automated backups. This dumps every table
+# to JSONL and keeps it as a downloadable artifact (90-day retention).
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: Export tables
+        run: python -m radar --export ./backup
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radar-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 90

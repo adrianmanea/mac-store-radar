@@ -179,6 +179,12 @@ Decisions: **LLM generator** + **auto-promote** (your call). Generators dropped:
 
 **AC:** ◐ code + wiring done, offline-tested; live discovery (real candidates promoted) needs the key. Threshold `min_opportunity_to_promote=8.0`, budget 30/day — tune in `weights.json`.
 
+## Data backup
+
+- [x] **Export** — `radar --export DIR` dumps all 10 tables to JSONL + manifest (paginated). Live-verified: 8445 rows. `db/export.py`.
+- [x] **Weekly backup workflow** — `backup.yml` (Sun 05:00 UTC) runs export → uploads artifact (90-day retention). Supabase free tier has no guaranteed auto-backups, so this is the safety net.
+- Note: raw API responses (`FileRawStore`) are local/ephemeral in CI — not backed up, but re-fetchable; the scored/snapshot data (the precious part) is covered.
+
 ## Open questions to resolve in-flight (PRD §10 / TECH §12)
 - Lookup batch ceiling: 150 vs 200 (resolve in 1.4).
 - Review pages-deep before diminishing returns (resolve in 1.5 / 5.2).
