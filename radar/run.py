@@ -68,13 +68,19 @@ def run_discovery_job() -> int:
     """
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     from radar.db import writers
-    from radar.pipeline.discover import google_candidates, harvest_prefixes, run_discovery
+    from radar.pipeline.discover import (
+        clean_noisy,
+        google_candidates,
+        harvest_prefixes,
+        run_discovery,
+    )
     from radar.seeds import GOOGLE_SEED_PREFIXES
 
     cfg = Config.load()
     db = service_client(cfg)
     itunes = _itunes_client(cfg)
     try:
+        clean_noisy(db)  # self-heal: purge web-query noise from the existing pool
         avoid = writers.existing_keywords(db)
         # Seed prefixes = the static hand-set list + prefixes harvested from the catalog
         # we've already scraped (self-bootstrapping; the more we scrape, the more it finds).

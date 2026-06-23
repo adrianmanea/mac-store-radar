@@ -175,7 +175,7 @@ Goal: stop hand-seeding. Self-feeding generate → validate → auto-promote fun
 - [x] **9.6** **Google Suggest generator** (`adapters/google_suggest.py` + `google_candidates`) — free, no-key, real high-volume completions (Apple's autocomplete is dead). Now the DEFAULT discovery source; LLM layered on when key present. Funnel refactored source-agnostic. Discovery Actions step no longer key-gated. (M)
 - [ ] **9.7** Use Google suggestion order/presence as the demand proxy (fills the dead Apple-autocomplete signal). (S)
 - [x] **9.8** Catalog-harvest generator — `prefixes_from_names` / `harvest_prefixes` derive seed prefixes (top title words + bigrams, stopword-filtered) from the apps already scraped. Discovery seeds = static `GOOGLE_SEED_PREFIXES` + harvested → self-bootstrapping, compounds as the catalog grows. Live: 35 prefixes auto-derived. 4 tests. (M)
-- [ ] **9.9** Keyword-noise filter — strip non-App-Store web phrasings ("how to…", "…reddit", "…kostenlos") before validating. (S)
+- [x] **9.9** Keyword-noise filter (`is_noisy`) — drops web-query phrasings (question starts, `reddit`/`vs`/`tutorial`, foreign/non-ascii, >6 words) before they cost an iTunes call; `clean_noisy` self-heals the existing pool each discovery run. Deterministic (no LLM). Live: purged 5. 6 tests. (S)
 
 Decisions: ~~auto-promote~~ **REVISED** → discovery fills a scored candidate POOL only; operator hand-picks what to track. `radar --watch <kw>` promotes a candidate into the watch list. Validation drains the backlog (oldest `new` first) so the pool deepens daily. Generators dropped: autocomplete (Apple dead). Live: 195 candidates from 20 google seeds, scored.
 

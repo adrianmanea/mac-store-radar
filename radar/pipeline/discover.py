@@ -50,6 +50,70 @@ _STOP = {
 }
 _WORD = re.compile(r"[a-z]{4,}")
 
+# Google Suggest returns web-search phrasings that aren't how people search the App Store.
+# Strip them before spending an iTunes call validating them.
+_QUESTION_STARTS = {
+    "how",
+    "what",
+    "where",
+    "why",
+    "when",
+    "which",
+    "who",
+    "is",
+    "are",
+    "can",
+    "does",
+    "do",
+    "will",
+    "should",
+}
+_NOISE_TOKENS = {
+    # web/community phrasings
+    "reddit",
+    "vs",
+    "versus",
+    "tutorial",
+    "guide",
+    "review",
+    "reviews",
+    "youtube",
+    "quora",
+    "wiki",
+    "wikipedia",
+    "meaning",
+    "definition",
+    # non-English (Google leaks localized completions)
+    "kostenlos",
+    "gratuit",
+    "gratuita",
+    "gratis",
+    "descargar",
+    "telecharger",
+    "italiano",
+    "espanol",
+    "deutsch",
+    "francais",
+    "portugues",
+}
+MAX_WORDS = 6
+
+
+def is_noisy(keyword: str) -> bool:
+    """True if a candidate looks like a web query, not an App Store search term."""
+    toks = keyword.lower().split()
+    if not toks:
+        return True
+    if toks[0] in _QUESTION_STARTS:
+        return True
+    if len(toks) > MAX_WORDS:
+        return True
+    if any(t in _NOISE_TOKENS for t in toks):
+        return True
+    if not keyword.isascii():  # foreign-script completions
+        return True
+    return False
+
 
 def prefixes_from_names(
     names: list[str], *, top_words: int = 20, top_bigrams: int = 15
@@ -108,10 +172,30 @@ def google_candidates(
             kw = s.lower().strip()
             if require_token and require_token not in kw:
                 continue
+            if is_noisy(kw):  # drop web-query phrasings before they cost an iTunes call
+                continue
             if kw and kw not in avoid:
                 seen.setdefault(kw, None)
     log.info("discovery: %d google candidates from %d seeds", len(seen), len(seeds))
     return list(seen)
+
+
+def clean_noisy(db) -> int:
+    """Mark existing pool candidates that are web-query noise as rejected. Self-healing."""
+    res = (
+        db.table("niche_candidates")
+        .select("keyword,status")
+        .in_("status", ["new", "validated"])
+        .execute()
+    )
+    n = 0
+    for r in res.data or []:
+        if is_noisy(r["keyword"]):
+            writers.update_candidate(db, r["keyword"], status="rejected", reason="noisy keyword")
+            n += 1
+    if n:
+        log.info("discovery: rejected %d noisy candidates from the pool", n)
+    return n
 
 
 def run_discovery(
