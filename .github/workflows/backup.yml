@@ -1,8 +1,9 @@
 name: backup
 
 on:
-  schedule:
-    - cron: '0 5 * * 0' # 05:00 UTC every Sunday
+  # PAUSED 2026-06-30: weekly cron disabled. Re-enable by uncommenting. Manual runs still work.
+  # schedule:
+  #   - cron: '0 5 * * 0' # 05:00 UTC every Sunday
   workflow_dispatch: {}
 
 # The Supabase free tier has no guaranteed automated backups. This dumps every table

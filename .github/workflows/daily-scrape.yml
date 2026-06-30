@@ -1,10 +1,12 @@
 name: daily-scrape
 
 on:
-  schedule:
-    # 06:00 UTC daily. Actions cron is best-effort (can lag minutes under load) —
-    # fine for a daily momentum snapshot (TECH-PRD §8).
-    - cron: '0 6 * * *'
+  # PAUSED 2026-06-30: daily cron disabled to stop automated scrape/LLM/Supabase cost.
+  # Re-enable by uncommenting the schedule block. Manual runs still work via workflow_dispatch.
+  # schedule:
+  #   # 06:00 UTC daily. Actions cron is best-effort (can lag minutes under load) —
+  #   # fine for a daily momentum snapshot (TECH-PRD §8).
+  #   - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       seed:
